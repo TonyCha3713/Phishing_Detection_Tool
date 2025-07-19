@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+streamlit
+openai
+langchain
+scikit-learn
+pandas
+numpy
+tqdm
+httpx
+# Free alternatives for LLM and embeddings
+sentence-transformers
+transformers
+torch
+accelerate
