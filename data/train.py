@@ -32,7 +32,7 @@ y_pred_xgb = tuned_xgb.predict(X_test)
 print('\nXGBoost Results:')
 print(classification_report(y_test, y_pred_xgb))
 # Save the model
-model_path = os.path.join('data', 'best_model.pkl')
+model_path = os.path.join('notebooks', 'best_model.pkl')
 joblib.dump(tuned_xgb, model_path)
 print(f'\nTuned XGBoost model saved to {model_path}')
 
