@@ -3,13 +3,10 @@ uvicorn
 streamlit
 openai
 langchain
-scikit-learn
-pandas
+scikit-learn>=1.0.0
+pandas>=1.3.0
 numpy
-tqdm
-httpx
-# Free alternatives for LLM and embeddings
-sentence-transformers
-transformers
-torch
-accelerate
+matplotlib>=3.4.0
+seaborn>=0.11.0
+xgboost>=1.5.0
+joblib>=1.0.0
