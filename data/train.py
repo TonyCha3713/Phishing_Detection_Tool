@@ -6,8 +6,11 @@ import os
 from xgboost import XGBClassifier, plot_importance
 import matplotlib.pyplot as plt
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Load features
-df = pd.read_csv('data/features.csv')
+features_csv = os.path.join(BASE_DIR, 'features.csv')
+df = pd.read_csv(features_csv)
 X = df.drop('label', axis=1)
 y = df['label']
 
@@ -20,10 +23,9 @@ tuned_xgb = XGBClassifier(
     eval_metric='logloss',
     random_state=42,
     subsample=1.0,
-    n_estimators=300,
+    n_estimators=1000,
     max_depth=8,
-    learning_rate=0.2,
-    colsample_bytree=0.9
+    learning_rate=0.1,
 )
 tuned_xgb.fit(X_train, y_train)
 y_pred_xgb = tuned_xgb.predict(X_test)
@@ -32,7 +34,7 @@ y_pred_xgb = tuned_xgb.predict(X_test)
 print('\nXGBoost Results:')
 print(classification_report(y_test, y_pred_xgb))
 # Save the model
-model_path = os.path.join('notebooks', 'best_model.pkl')
+model_path = os.path.join(BASE_DIR, '../notebooks/best_model.pkl')
 joblib.dump(tuned_xgb, model_path)
 print(f'\nTuned XGBoost model saved to {model_path}')
 
@@ -41,6 +43,7 @@ plt.figure(figsize=(8, 5))
 plot_importance(tuned_xgb, ax=plt.gca(), importance_type='weight', show_values=False)
 plt.title('XGBoost Feature Importances')
 plt.tight_layout()
-plt.savefig(os.path.join('data', 'xgboost_feature_importance.png'))
+feature_importance_path = os.path.join(BASE_DIR, '../data/xgboost_feature_importance.png')
+plt.savefig(feature_importance_path)
 plt.close()
-print('Feature importance plot saved to data/xgboost_feature_importance.png') 
+print(f'Feature importance plot saved to {feature_importance_path}') 
