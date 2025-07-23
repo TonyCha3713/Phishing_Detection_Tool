@@ -76,7 +76,7 @@ for file_path in epvme_files:
     epvme_rows.append(features)
 
 # --- 2. Process Enron legitimate emails ---
-enron_csv = os.path.join(BASE_DIR, 'emails.csv')
+enron_csv = os.path.join(BASE_DIR, 'Enron.csv')
 enron_df = pd.read_csv(enron_csv)
 enron_rows = []
 for idx, row in enron_df.iterrows():
@@ -92,6 +92,6 @@ feature_cols = [
 ]
 all_rows = epvme_rows + enron_rows
 df_all = pd.DataFrame(all_rows, columns=feature_cols)
-output_csv = os.path.join(BASE_DIR, '../data/combined_features.csv')
+output_csv = os.path.join(BASE_DIR, 'combined_features.csv')
 df_all.to_csv(output_csv, index=False)
-print("Combined feature set saved to data/combined_features.csv")
+print("Combined feature set saved to combined_features.csv")

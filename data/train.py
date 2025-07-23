@@ -5,13 +5,33 @@ import joblib
 import os
 from xgboost import XGBClassifier, plot_importance
 import matplotlib.pyplot as plt
+from sklearn.feature_extraction.text import TfidfVectorizer
+import numpy as np
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Load features
 features_csv = os.path.join(BASE_DIR, 'features.csv')
 df = pd.read_csv(features_csv)
-X = df.drop('label', axis=1)
+# Fill NaNs
+df['body'] = df['body'].fillna('')
+df['subject'] = df['subject'].fillna('')
+
+# TF-IDF for body
+tfidf_body = TfidfVectorizer(max_features=100)
+body_tfidf = tfidf_body.fit_transform(df['body'])
+body_tfidf_df = pd.DataFrame(body_tfidf.toarray(), columns=[f'body_tfidf_{i}' for i in range(body_tfidf.shape[1])])
+
+# TF-IDF for subject
+tfidf_subject = TfidfVectorizer(max_features=50)
+subject_tfidf = tfidf_subject.fit_transform(df['subject'])
+subject_tfidf_df = pd.DataFrame(subject_tfidf.toarray(), columns=[f'subject_tfidf_{i}' for i in range(subject_tfidf.shape[1])])
+
+# Drop raw text columns
+df = df.drop(['body', 'subject', 'text'], axis=1, errors='ignore')
+
+# Combine all features
+X = pd.concat([df.drop('label', axis=1).reset_index(drop=True), body_tfidf_df, subject_tfidf_df], axis=1)
 y = df['label']
 
 # Train/test split
@@ -38,12 +58,37 @@ model_path = os.path.join(BASE_DIR, '../notebooks/best_model.pkl')
 joblib.dump(tuned_xgb, model_path)
 print(f'\nTuned XGBoost model saved to {model_path}')
 
-# Plot feature importances
-plt.figure(figsize=(8, 5))
-plot_importance(tuned_xgb, ax=plt.gca(), importance_type='weight', show_values=False)
-plt.title('XGBoost Feature Importances')
+# Get feature importances and feature names
+importances = tuned_xgb.feature_importances_
+feature_names = X.columns
+
+# Get indices of top 20 features
+top_indices = np.argsort(importances)[::-1][:20]
+
+# For body
+body_vocab = tfidf_body.get_feature_names_out()
+# For subject
+subject_vocab = tfidf_subject.get_feature_names_out()
+
+# Save TF-IDF index-to-word mappings to files
+body_vocab_path = os.path.join(BASE_DIR, 'body_tfidf_mapping.csv')
+subject_vocab_path = os.path.join(BASE_DIR, 'subject_tfidf_mapping.csv')
+
+pd.Series(body_vocab).to_csv(body_vocab_path, index_label='index', header=['word'])
+pd.Series(subject_vocab).to_csv(subject_vocab_path, index_label='index', header=['word'])
+
+print(f"Body TF-IDF vocabulary saved to {body_vocab_path}")
+print(f"Subject TF-IDF vocabulary saved to {subject_vocab_path}")
+
+# Plot top 20 feature importances
+plt.figure(figsize=(10, 6))
+top_features = [feature_names[idx] for idx in top_indices]
+top_importances = importances[top_indices]
+plt.barh(top_features[::-1], top_importances[::-1])  # reverse for descending order
+plt.xlabel('Importance')
+plt.title('Top 20 XGBoost Feature Importances')
 plt.tight_layout()
-feature_importance_path = os.path.join(BASE_DIR, '../data/xgboost_feature_importance.png')
+feature_importance_path = os.path.join(BASE_DIR, 'xgboost_feature_importance.png')
 plt.savefig(feature_importance_path)
 plt.close()
 print(f'Feature importance plot saved to {feature_importance_path}') 
