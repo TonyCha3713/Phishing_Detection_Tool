@@ -11,7 +11,7 @@ import numpy as np
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Load features
-features_csv = os.path.join(BASE_DIR, 'features.csv')
+features_csv = os.path.join(BASE_DIR, 'combined_features.csv')
 df = pd.read_csv(features_csv)
 # Fill NaNs
 df['body'] = df['body'].fillna('')

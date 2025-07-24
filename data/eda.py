@@ -5,8 +5,7 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-data_path = os.path.join(BASE_DIR, 'features.csv')
-# Load data
+data_path = os.path.join(BASE_DIR, 'combined_features.csv')
 df = pd.read_csv(data_path)
 
 # Basic info
@@ -19,7 +18,6 @@ print(df.head())
 print('\nClass distribution:')
 print(df['label'].value_counts())
 
-# Plot class distribution
 plt.figure(figsize=(5,4))
 sns.countplot(x='label', data=df)
 plt.title('Class Distribution (0=Ham, 1=Spam/Phishing)')
@@ -32,45 +30,77 @@ plt.close()
 print('\nMissing values:')
 print(df.isnull().sum())
 
-# Analyze body length
-print('\nBody length stats:')
-print(df['body_length'].describe())
+# --- INSIGHTFUL EDA ---
+# 1. Feature distributions by label (split histograms)
+feature_list = [
+    'body_length', 'num_digits', 'num_exclamation_marks', 'num_urls',
+    'sender_domain_length', 'num_uppercase_words', 'url_length', 'num_subdomains'
+]
+for feat in feature_list:
+    if feat in df.columns:
+        plt.figure(figsize=(8,4))
+        sns.histplot(data=df, x=feat, hue='label', bins=30, kde=True, stat='density', common_norm=False, palette='Set1')
+        plt.title(f'Distribution of {feat} by Label')
+        plt.xlabel(feat)
+        plt.ylabel('Density')
+        plt.legend(title='Label', labels=['Ham', 'Phishing'])
+        plt.tight_layout()
+        plt.savefig(os.path.join(BASE_DIR, f'{feat}_by_label_hist.png'))
+        plt.close()
 
-plt.figure(figsize=(7,4))
-sns.histplot(df['body_length'], bins=50, kde=True)
-plt.title('Distribution of Email Body Length')
-plt.xlabel('Body Length (characters)')
-plt.ylabel('Frequency')
-plt.savefig(os.path.join(BASE_DIR, 'body_length_distribution.png'))
+# 2. Boxplots for numeric features by label
+for feat in feature_list:
+    if feat in df.columns:
+        plt.figure(figsize=(7,4))
+        sns.boxplot(x='label', y=feat, data=df, palette='Set2')
+        plt.title(f'{feat} by Label (Boxplot)')
+        plt.xlabel('Label (0=Ham, 1=Phishing)')
+        plt.ylabel(feat)
+        plt.tight_layout()
+        plt.savefig(os.path.join(BASE_DIR, f'{feat}_by_label_boxplot.png'))
+        plt.close()
+
+# 3. Correlation heatmap for numeric features
+numeric_feats = [f for f in feature_list if f in df.columns]
+if len(numeric_feats) > 1:
+    plt.figure(figsize=(10,8))
+    corr = df[numeric_feats + ['label']].corr()
+    sns.heatmap(corr, annot=True, fmt='.2f', cmap='coolwarm', square=True)
+    plt.title('Correlation Heatmap (Numeric Features + Label)')
+    plt.tight_layout()
+    plt.savefig(os.path.join(BASE_DIR, 'correlation_heatmap.png'))
+    plt.close()
+
+# 4. Pairplot for top features (if not too many rows)
+if len(df) < 2000:
+    top_feats = numeric_feats[:4] + ['label']
+    sns.pairplot(df[top_feats], hue='label', palette='Set1', plot_kws={'alpha':0.5})
+    plt.savefig(os.path.join(BASE_DIR, 'pairplot_top_features.png'))
+    plt.close()
+
+# 5. Barplot of mean feature values by label
+mean_df = df.groupby('label')[numeric_feats].mean().T
+plt.figure(figsize=(10,6))
+mean_df.plot(kind='bar', width=0.8)
+plt.title('Mean Feature Values by Label')
+plt.ylabel('Mean Value')
+plt.xlabel('Feature')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.savefig(os.path.join(BASE_DIR, 'mean_feature_values_by_label.png'))
 plt.close()
 
-# Emails with URLs (urls column is binary: 0 = no URLs, 1 = at least one URL)
-df['has_url'] = (df['num_urls'] > 0).astype(int)
-num_with_url = (df['num_urls'] > 0).sum()
-print(f'\nNumber of emails with at least one URL: {num_with_url} ({num_with_url/len(df)*100:.2f}%)')
+# 6. Categorical/binary features by label
+for feat in ['sender_matches_url', 'uses_https', 'has_ip_address']:
+    if feat in df.columns:
+        plt.figure(figsize=(5,4))
+        sns.countplot(x=feat, hue='label', data=df)
+        plt.title(f'{feat.replace("_", " ").title()} by Label')
+        plt.xlabel(feat.replace('_', ' ').title())
+        plt.ylabel('Count')
+        plt.legend(title='Label', labels=['Ham', 'Phishing'])
+        plt.tight_layout()
+        plt.savefig(os.path.join(BASE_DIR, f'{feat}_by_label.png'))
+        plt.close()
 
-plt.figure(figsize=(5,4))
-sns.countplot(x='has_url', data=df)
-plt.title('Emails with URLs (0 = No URLs, 1 = At least 1 URL)')
-plt.xlabel('Contains URL')
-plt.ylabel('Count')
-plt.xticks([0,1], ['No', 'Yes'])
-plt.savefig(os.path.join(BASE_DIR, 'emails_with_urls_binary.png'))
-plt.close()
-
-# Distribution of URL presence by label
-plt.figure(figsize=(7,4))
-sns.countplot(x='has_url', hue='label', data=df)
-plt.title('URL Presence by Label (0 = No URLs, 1 = At least 1 URL)')
-plt.xlabel('Contains URL')
-plt.ylabel('Count')
-plt.xticks([0,1], ['No', 'Yes'])
-plt.legend(title='Label', labels=['Ham', 'Spam/Phishing'])
-plt.savefig(os.path.join(BASE_DIR, 'url_presence_by_label.png'))
-plt.close()
-
-# Save a summary CSV
-# (urls is already binary, so no need for contains_url)
-df[['label','body_length','has_url']].to_csv(os.path.join(BASE_DIR, 'eda_summary_with_url.csv'), index=False)
-
-print('\nEDA complete. Plots and summary saved to data/.') 
+print('\nEDA complete. Insightful plots and summary saved to data/.') 
