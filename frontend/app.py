@@ -27,7 +27,14 @@ def analyze_eml_file(uploaded_file) -> Optional[Dict[str, Any]]:
 def display_email_results(result: Dict[str, Any]):
     st.subheader("📧 Email Phishing Analysis Result")
     st.metric("Hybrid Risk Score (%)", f"{result['hybrid_risk_percent']}%")
-    st.write(f"**Risk Indicator:** {result['risk_indicator']}")
+    # Color-coordinated risk indicator
+    risk = result['risk_indicator']
+    if risk in ["Very Low", "Low"]:
+        st.success(f"Risk Indicator: {risk}")
+    elif risk == "Medium":
+        st.warning(f"Risk Indicator: {risk}")
+    else:  # High or Very High
+        st.error(f"Risk Indicator: {risk}")
     st.write(f"**LLM Explanation:** {result['llm_explanation']}")
     st.write(f"**XGBoost Risk Score:** {result['xgboost_risk_score']:.4f}")
     st.write(f"**LLM Risk Score:** {result['llm_risk_score']:.4f}")

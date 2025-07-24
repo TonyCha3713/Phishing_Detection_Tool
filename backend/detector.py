@@ -99,8 +99,8 @@ def analyze_email_with_chain(body, sender, subject=None):
     llm_response = llm_explanation(body, sender, subject, xgb_score=xgb_score)
     llm_dict = json.loads(llm_response)
     llm_score = float(llm_dict['risk_score'])
-    # Hybrid risk score (simple average)
-    hybrid_score = (xgb_score + llm_score) / 2
+    # Hybrid risk score (weighted: 0.35 XGBoost, 0.65 LLM)
+    hybrid_score = (0.35 * xgb_score) + (0.65 * llm_score)
     risk_percent = int(round(hybrid_score * 100))
     # Risk indicator
     def risk_indicator(score_percent):
@@ -123,57 +123,3 @@ def analyze_email_with_chain(body, sender, subject=None):
         "llm_explanation": llm_dict['explanation']
     }
     return result
-
-if __name__ == "__main__":
-    test_emails = [
-        # Legitimate
-        {
-            "body": "Dear Team,\n\nWe would like to inform you that the office will be closed on July 4th in observance of Independence Day. Please plan accordingly.\n\nBest regards,\nHR Department",
-            "sender": "hr@company.com",
-            "subject": "Upcoming Holiday Schedule"
-        },
-        {
-            "body": "Hello,\n\nThank you for your order. Your package will be shipped soon. You can track your order here: https://www.amazon.com/your-orders\n\nThank you for shopping with us!\nAmazon Customer Service",
-            "sender": "orders@amazon.com",
-            "subject": "Your Amazon Order #123-4567890-1234567"
-        },
-        {
-            "body": "Hi Team,\n\nYou are invited to the Project Kickoff Meeting on Monday at 10:00 AM in Conference Room B. Please let me know if you have any conflicts.\n\nBest,\nJane",
-            "sender": "jane.smith@company.com",
-            "subject": "Project Kickoff Meeting"
-        },
-        {
-            "body": "Dear Customer,\n\nYour monthly statement is now available. Please log in to your account at https://www.chase.com to view your statement securely.\n\nThank you for banking with us.\nChase Bank",
-            "sender": "alerts@chase.com",
-            "subject": "Your Monthly Statement is Ready"
-        },
-        # Phishing
-        {
-            "body": "Dear Customer,\n\nYour PayPal account has been suspended due to suspicious activity. Please verify your account immediately to restore access: http://paypal-verify-login.com\n\nFailure to do so will result in permanent suspension.\n\nSincerely,\nPayPal Security Team",
-            "sender": "support@paypa1.com",
-            "subject": "Urgent: Account Suspended"
-        },
-        {
-            "body": "Hi,\n\nAre you available? I need you to purchase $500 in Amazon gift cards for a client meeting. Please send the codes as soon as possible.\n\nThanks,\nJohn (CEO)",
-            "sender": "ceo.john@company-executive.com",
-            "subject": "Quick Request"
-        },
-        {
-            "body": "Dear User,\n\nWe detected an unusual sign-in attempt on your Microsoft account. Please confirm your identity by clicking the link below:\n\nhttp://microsoft-account-verify.com\n\nIf you do not verify within 24 hours, your account will be locked.\n\nMicrosoft Security Team",
-            "sender": "security@micros0ft-support.com",
-            "subject": "Security Alert: Unusual Sign-In Attempt"
-        },
-        {
-            "body": "Dear Taxpayer,\n\nYou are eligible for a tax refund of $1,200. Please submit your information to claim your refund: http://irs-tax-refund.com\n\nThank you,\nIRS Refund Department",
-            "sender": "irs@tax-refund-gov.com",
-            "subject": "Tax Refund Notification"
-        }
-    ]
-    for i, email in enumerate(test_emails, 1):
-        print(f"\n--- Test Email {i} ---")
-        result = analyze_email_with_chain(email["body"], email["sender"], email["subject"])
-        print(f"XGBoost Risk Score: {result['xgboost_risk_score']:.4f}")
-        print("LLM Risk Score:", result['llm_risk_score'])
-        print("Hybrid Risk Percent:", result['hybrid_risk_percent'], "%")
-        print("Risk Indicator:", result['risk_indicator'])
-        print("LLM Explanation:", result['llm_explanation'])
