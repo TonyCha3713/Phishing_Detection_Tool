@@ -1,57 +1,36 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any
-from detector import SMSPhishingDetector
+from detector import analyze_email_with_chain
+import email
+import uvicorn
 
-app = FastAPI(title="SMS Phishing Detection API", version="1.0.0")
-
-# Initialize the detector
-print("Initializing SMS detector...")
-detector = SMSPhishingDetector()
-print("SMS detector initialized successfully!")
-
-class SMSRequest(BaseModel):
-    text: str
-
-class SMSResponse(BaseModel):
-    text: str
-    risk_score: float
-    rule_score: float
-    similarity_score: float
-    feature_score: float
-    is_phishing: bool
-    confidence: str
-    analysis: str
-    similar_messages: List[Dict[str, Any]]
+app = FastAPI(title="Phishing Detection API", version="1.0.0")
 
 @app.get("/")
 async def root():
-    return {"message": "SMS Phishing Detection API is running!"}
+    return {"message": "Phishing Detection API is running!"}
 
-@app.post("/analyze", response_model=SMSResponse)
-async def analyze_sms(request: SMSRequest):
-    """Analyze an SMS for phishing indicators"""
+@app.post("/analyze_eml")
+async def analyze_eml(file: UploadFile = File(...)):
     try:
-        # Analyze the SMS
-        result = detector.analyze_text_advanced(request.text)
-        
-        # Find similar messages
-        similar_messages = detector.find_similar_messages(request.text, top_k=3)
-        
-        return SMSResponse(
-            text=result['text'],
-            risk_score=result['risk_score'],
-            rule_score=result['rule_score'],
-            similarity_score=result['similarity_score'],
-            feature_score=result['feature_score'],
-            is_phishing=result['is_phishing'],
-            confidence=result['confidence'],
-            analysis=result['analysis'],
-            similar_messages=similar_messages
-        )
+        eml_bytes = await file.read()
+        msg = email.message_from_bytes(eml_bytes)
+        subject = msg.get('Subject', '')
+        sender = msg.get('From', '')
+        # Extract body (handles plain text only for simplicity)
+        body = ""
+        if msg.is_multipart():
+            for part in msg.walk():
+                if part.get_content_type() == "text/plain":
+                    body += part.get_payload(decode=True).decode(errors="ignore")
+        else:
+            body = msg.get_payload(decode=True).decode(errors="ignore")
+        # Run hybrid model
+        result = analyze_email_with_chain(body, sender, subject)
+        return result
     except Exception as e:
-        print(f"Error in analysis: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to analyze EML: {str(e)}")
 
 @app.get("/health")
 async def health_check():
@@ -59,5 +38,4 @@ async def health_check():
     return {"status": "healthy", "model_loaded": True}
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000) 
